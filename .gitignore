@@ -1,0 +1,9 @@
+nbproject/private/
+build/
+dist/
+target/
+taxes/
+houses/
+delinquent/
+*.csv
+*.xlsx
