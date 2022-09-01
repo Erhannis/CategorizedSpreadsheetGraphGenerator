@@ -15,14 +15,19 @@ import java.util.HashMap;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.util.Units;
+import org.apache.poi.xddf.usermodel.XDDFColor;
 import org.apache.poi.xddf.usermodel.XDDFLineProperties;
 import org.apache.poi.xddf.usermodel.XDDFNoFillProperties;
 import org.apache.poi.xddf.usermodel.XDDFShapeProperties;
+import org.apache.poi.xddf.usermodel.XDDFSolidFillProperties;
 import org.apache.poi.xddf.usermodel.chart.AxisCrosses;
 import org.apache.poi.xddf.usermodel.chart.AxisPosition;
 import org.apache.poi.xddf.usermodel.chart.ChartTypes;
 import org.apache.poi.xddf.usermodel.chart.LegendPosition;
 import org.apache.poi.xddf.usermodel.chart.MarkerStyle;
+import org.apache.poi.xddf.usermodel.chart.XDDFCategoryAxis;
+import org.apache.poi.xddf.usermodel.chart.XDDFChartData;
 import org.apache.poi.xddf.usermodel.chart.XDDFChartLegend;
 import org.apache.poi.xddf.usermodel.chart.XDDFDataSource;
 import org.apache.poi.xddf.usermodel.chart.XDDFDataSourcesFactory;
@@ -32,8 +37,15 @@ import org.apache.poi.xddf.usermodel.chart.XDDFValueAxis;
 import org.apache.poi.xssf.usermodel.XSSFChart;
 import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
 import org.apache.poi.xssf.usermodel.XSSFDrawing;
+import org.apache.poi.xssf.usermodel.XSSFGraphicFrame;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.openxmlformats.schemas.drawingml.x2006.chart.CTPlotArea;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTLineProperties;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTShapeProperties;
+import org.openxmlformats.schemas.drawingml.x2006.main.STCompoundLine;
+import org.openxmlformats.schemas.drawingml.x2006.main.STLineCap;
+import org.openxmlformats.schemas.drawingml.x2006.main.STPenAlignment;
 
 /**
  *
@@ -99,8 +111,8 @@ public class CSGG {
             while ((line = csv.readNext()) != null) {
                 try {
                     String cat = line[categorycol];
-                    String sx = line[xcol];
-                    String sy = line[ycol];
+                    double sx = Double.parseDouble(line[xcol]);
+                    double sy = Double.parseDouble(line[ycol]);
 
                     SheetInfo si = getSheet(cat);
                     Row row = si.sheet.createRow((short) si.rows);
@@ -120,13 +132,13 @@ public class CSGG {
             System.out.println("Input has ended");
             
             XSSFDrawing drawing = chartSheet.createDrawingPatriarch();
-            XSSFClientAnchor anchor = drawing.createAnchor(0, 0, 0, 0, 0, 5, 10, 15); ////
+            XSSFClientAnchor anchor = drawing.createAnchor(0, 0, 0, 0, 1, 1, 20, 30); ////
 
             XSSFChart chart = drawing.createChart(anchor);
             XDDFChartLegend legend = chart.getOrAddLegend();
             legend.setPosition(LegendPosition.TOP_RIGHT);
 
-            XDDFValueAxis bottomAxis = chart.createValueAxis(AxisPosition.BOTTOM);
+            XDDFCategoryAxis bottomAxis = chart.createCategoryAxis(AxisPosition.BOTTOM);
             bottomAxis.setTitle("x"); // https://stackoverflow.com/questions/32010765
             XDDFValueAxis leftAxis = chart.createValueAxis(AxisPosition.LEFT);
             leftAxis.setTitle("y");
@@ -144,11 +156,15 @@ public class CSGG {
                 series.setTitle(name, null); // https://stackoverflow.com/questions/21855842
                 series.setSmooth(false); // https://stackoverflow.com/questions/39636138
 
-                series.setMarkerStyle(MarkerStyle.DOT);
+                series.setMarkerStyle(MarkerStyle.CIRCLE);
                 series.setMarkerSize((short) 2);
 
                 XDDFLineProperties lineProperties = new XDDFLineProperties();
-                lineProperties.setWidth(0.0);
+                int hc = ("blahblahblah"+name+"blahblah").hashCode(); // Deriving color from name.  Plain hash code was too small
+                double f = 0.8; // Scaling, so they don't conflict with the light background
+                byte[] rgb = new byte[] {(byte)(((hc & 0x00FF0000) >>> 16)*f), (byte)(((hc & 0x0000FF00) >>> 8)*f), (byte)((hc & 0x000000FF)*f)};
+                lineProperties.setFillProperties(new XDDFSolidFillProperties(XDDFColor.from(rgb)));
+                lineProperties.setWidth(0.1);
                 XDDFShapeProperties shapeProperties = series.getShapeProperties();
                 if (shapeProperties == null) {
                     shapeProperties = new XDDFShapeProperties();
@@ -158,6 +174,90 @@ public class CSGG {
             }
 
             chart.plot(data);
+
+            // --> https://stackoverflow.com/a/51541623
+            // do not auto delete the title
+            if (chart.getCTChart().getAutoTitleDeleted() == null) {
+                chart.getCTChart().addNewAutoTitleDeleted();
+            }
+            chart.getCTChart().getAutoTitleDeleted().setVal(false);
+
+            // plot area background and border line
+            if (chart.getCTChartSpace().getSpPr() == null) {
+                chart.getCTChartSpace().addNewSpPr();
+            }
+            if (chart.getCTChartSpace().getSpPr().getSolidFill() == null) {
+                chart.getCTChartSpace().getSpPr().addNewSolidFill();
+            }
+            if (chart.getCTChartSpace().getSpPr().getSolidFill().getSrgbClr() == null) {
+                chart.getCTChartSpace().getSpPr().getSolidFill().addNewSrgbClr();
+            }
+            chart.getCTChartSpace().getSpPr().getSolidFill().getSrgbClr().setVal(new byte[]{(byte) 255, (byte) 255, (byte) 255});
+            if (chart.getCTChartSpace().getSpPr().getLn() == null) {
+                chart.getCTChartSpace().getSpPr().addNewLn();
+            }
+            chart.getCTChartSpace().getSpPr().getLn().setW(Units.pixelToEMU(1));
+            if (chart.getCTChartSpace().getSpPr().getLn().getSolidFill() == null) {
+                chart.getCTChartSpace().getSpPr().getLn().addNewSolidFill();
+            }
+            if (chart.getCTChartSpace().getSpPr().getLn().getSolidFill().getSrgbClr() == null) {
+                chart.getCTChartSpace().getSpPr().getLn().getSolidFill().addNewSrgbClr();
+            }
+            chart.getCTChartSpace().getSpPr().getLn().getSolidFill().getSrgbClr().setVal(new byte[]{(byte) 0, (byte) 0, (byte) 0});
+
+            // line style of cat axis
+            if (chart.getCTChart().getPlotArea().getCatAxArray(0).getSpPr() == null) {
+                chart.getCTChart().getPlotArea().getCatAxArray(0).addNewSpPr();
+            }
+            if (chart.getCTChart().getPlotArea().getCatAxArray(0).getSpPr().getLn() == null) {
+                chart.getCTChart().getPlotArea().getCatAxArray(0).getSpPr().addNewLn();
+            }
+            chart.getCTChart().getPlotArea().getCatAxArray(0).getSpPr().getLn().setW(Units.pixelToEMU(1));
+            if (chart.getCTChart().getPlotArea().getCatAxArray(0).getSpPr().getLn().getSolidFill() == null) {
+                chart.getCTChart().getPlotArea().getCatAxArray(0).getSpPr().getLn().addNewSolidFill();
+            }
+            if (chart.getCTChart().getPlotArea().getCatAxArray(0).getSpPr().getLn().getSolidFill().getSrgbClr() == null) {
+                chart.getCTChart().getPlotArea().getCatAxArray(0).getSpPr().getLn().getSolidFill().addNewSrgbClr();
+            }
+            chart.getCTChart().getPlotArea().getCatAxArray(0).getSpPr().getLn().getSolidFill().getSrgbClr()
+                    .setVal(new byte[]{(byte) 0, (byte) 0, (byte) 0});
+
+            //line style of val axis
+            if (chart.getCTChart().getPlotArea().getValAxArray(0).getSpPr() == null) {
+                chart.getCTChart().getPlotArea().getValAxArray(0).addNewSpPr();
+            }
+            if (chart.getCTChart().getPlotArea().getValAxArray(0).getSpPr().getLn() == null) {
+                chart.getCTChart().getPlotArea().getValAxArray(0).getSpPr().addNewLn();
+            }
+            chart.getCTChart().getPlotArea().getValAxArray(0).getSpPr().getLn().setW(Units.pixelToEMU(1));
+            if (chart.getCTChart().getPlotArea().getValAxArray(0).getSpPr().getLn().getSolidFill() == null) {
+                chart.getCTChart().getPlotArea().getValAxArray(0).getSpPr().getLn().addNewSolidFill();
+            }
+            if (chart.getCTChart().getPlotArea().getValAxArray(0).getSpPr().getLn().getSolidFill().getSrgbClr() == null) {
+                chart.getCTChart().getPlotArea().getValAxArray(0).getSpPr().getLn().getSolidFill().addNewSrgbClr();
+            }
+            chart.getCTChart().getPlotArea().getValAxArray(0).getSpPr().getLn().getSolidFill().getSrgbClr()
+                    .setVal(new byte[]{(byte) 0, (byte) 0, (byte) 0});
+            // <-- https://stackoverflow.com/a/51541623
+
+            //TODO I don't know how to get gridlines to work, and apparently nobody else does, either
+            
+//            CTShapeProperties ctShapeProperties = chart.getCTChart().getPlotArea().getValAxArray(0).addNewMajorGridlines().addNewSpPr();
+//            CTLineProperties ctLineProperties1 = ctShapeProperties.addNewLn();
+//            ctLineProperties1.setW(9525);
+//            ctLineProperties1.setCap(STLineCap.FLAT);
+//            ctLineProperties1.setCmpd(STCompoundLine.SNG);
+//            ctLineProperties1.setAlgn(STPenAlignment.CTR);
+            
+//            chart.getCTChart().getPlotArea().getCatAxArray(0).addNewMajorGridlines().addNewSpPr().addNewSolidFill();
+//            chart.getCTChart().getPlotArea().getValAxArray(0).addNewMajorGridlines().addNewSpPr().addNewSolidFill();
+
+//            chart.getCTChart().getPlotArea().getCatAxArray(0).addNewMajorGridlines();
+//            chart.getCTChart().getPlotArea().getValAxArray(0).addNewMajorGridlines();
+
+//            CTPlotArea plotArea = chart.getCTChart().getPlotArea();
+//            plotArea.getCatAxArray()[0].addNewMajorGridlines();
+//            plotArea.getValAxArray()[0].addNewMajorGridlines();
 
             return wb;
         } finally {

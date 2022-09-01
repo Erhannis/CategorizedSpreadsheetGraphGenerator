@@ -14,6 +14,7 @@ import com.martiansoftware.jsap.SimpleJSAP;
 import com.martiansoftware.jsap.Switch;
 import com.martiansoftware.jsap.UnflaggedOption;
 import com.opencsv.exceptions.CsvValidationException;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import org.apache.poi.ss.usermodel.Cell;
@@ -74,7 +75,9 @@ public class Main {
         int xcol = config.getInt("xcol");
         int ycol = config.getInt("ycol");
 
-        XSSFWorkbook result = new CSGG(dieonerror, skipn, categorycol, xcol, ycol).parse(System.in);
+
+        //XSSFWorkbook result = new CSGG(dieonerror, skipn, categorycol, xcol, ycol).parse(System.in);
+        XSSFWorkbook result = new CSGG(dieonerror, skipn, categorycol, xcol, ycol).parse(new FileInputStream("test.csv"));
         System.out.println("result: " + result);
         try ( FileOutputStream fileOut = new FileOutputStream("test_"+System.currentTimeMillis()+".xlsx")) {
             result.write(fileOut);
