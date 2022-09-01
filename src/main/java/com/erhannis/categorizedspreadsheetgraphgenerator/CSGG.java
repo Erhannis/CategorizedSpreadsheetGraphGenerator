@@ -108,7 +108,9 @@ public class CSGG {
             XSSFSheet chartSheet = wb.createSheet("Chart");
             
             String[] line = null;
+            int i = 0;
             while ((line = csv.readNext()) != null) {
+                i++;
                 try {
                     String cat = line[categorycol];
                     double sx = Double.parseDouble(line[xcol]);
@@ -122,6 +124,7 @@ public class CSGG {
                     Cell y = row.createCell(1);
                     y.setCellValue(sy);
                 } catch (Throwable t) {
+                    System.err.println("Error on line..." + i + "?"); // Not totally sure csv.readNext() reads exactly one line, always
                     if (dieonerror) {
                         throw t;
                     } else {

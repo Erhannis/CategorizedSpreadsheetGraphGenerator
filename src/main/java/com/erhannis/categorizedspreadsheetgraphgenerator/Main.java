@@ -76,8 +76,8 @@ public class Main {
         int ycol = config.getInt("ycol");
 
 
-        //XSSFWorkbook result = new CSGG(dieonerror, skipn, categorycol, xcol, ycol).parse(System.in);
-        XSSFWorkbook result = new CSGG(dieonerror, skipn, categorycol, xcol, ycol).parse(new FileInputStream("test.csv"));
+        XSSFWorkbook result = new CSGG(dieonerror, skipn, categorycol, xcol, ycol).parse(System.in);
+        //XSSFWorkbook result = new CSGG(dieonerror, skipn, categorycol, xcol, ycol).parse(new FileInputStream("test.csv"));
         System.out.println("result: " + result);
         try ( FileOutputStream fileOut = new FileOutputStream("test_"+System.currentTimeMillis()+".xlsx")) {
             result.write(fileOut);
